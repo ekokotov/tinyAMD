@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Amd sample</title>
+	<script src="tinyAMD.js"></script>
+</head>
+<body>
+	<h2>tinyAMD.js</h2>
+</body>
+<script>
+// shims! FOR NON-AMD modules
+tinyAMD.shim = {
+		jQuery: {
+			exports: "jQuery",
+			paths:'vendor/jquery-2.1.4.min.js'
+		},
+		underscore:{
+			exports:"_",
+			paths:'vendor/underscore.js'
+		}
+};
+</script>
+<script src="modules/run.js"></script>
+</html>
