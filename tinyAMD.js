@@ -22,22 +22,32 @@ window.tinyAMD = (function() {
         xmlhttp.send();
     };
 
-    this._exec = function(parent,path,string) {
-        var newModule = new Function('return ' + string)();
-        newModule.parent = parent;
-        newModule.name = path;
-        if(!newModule.depPaths.length && newModule.parent){
+    this._exec = function(parent,path,module) {
+        if(module.hasOwnProperty('args'))
+            return module;
+        setTimeout(function(){
+            var newModule = new Function('return ' + module.response)();
+            newModule.parent = parent;
+            newModule.name = path;
+            if(!tinyAMD.modules.hasOwnProperty(path))
+                tinyAMD.modules[path] = newModule;
+            if(!newModule.depPaths.length && newModule.parent){
                 newModule.parent.addModuleResult(newModule);
-        }
-        return newModule;
+            }
+        },0);
     };
 
     this._defineShim = function(shimLib,callback){
         self._loadScript(shimLib.paths,function(xmlhttp){
-            eval('(function() {' + xmlhttp.responseText + '}())');
-            callback(window[shimLib.exports]);
+            setTimeout(function(){
+                new Function(xmlhttp.responseText)();
+                if(!tinyAMD.modules.hasOwnProperty(shimLib))
+                    tinyAMD.modules[shimLib.exports] = window[shimLib.exports];
+                callback(window[shimLib.exports]);
+            },0);
+
         });
-        
+
     };
 
     window.define = function(scripts, complete) {
@@ -47,7 +57,7 @@ window.tinyAMD = (function() {
     };
 
     return{
-
+        modules:{},
         shim :{},
         module:function(scripts, callback){
             this.args = [];
@@ -72,22 +82,22 @@ window.tinyAMD = (function() {
 
             this.loadDeps = function(){
                 this.depPaths.forEach(function(dep,index){
-
-                    if(tinyAMD.shim[dep]){
-
+                    if(tinyAMD.modules[dep] && !tinyAMD.shim[dep]){
+                        self._exec(this, dep, tinyAMD.modules[dep]);
+                    }else if(tinyAMD.shim[dep]){
+                        if(tinyAMD.modules[dep]){
+                            return;
+                        }
                         self._defineShim(tinyAMD.shim[dep],function(){
                             this.depsLoaded.push(tinyAMD.shim[dep].exports);
                             this.args[this.depPaths.indexOf(dep)] = window[tinyAMD.shim[dep].exports];
                             if(this.args.length == this.depsLoaded.length)
                                 this.execute();
                         }.bind(this));
-
                     }else{
-
-                        self._loadScript(dep,function(xmlhttp){
-                            self._exec(this, xmlhttp.script_src,xmlhttp.responseText);
-                        }.bind(this));
-                        
+                        self._loadScript(dep,function(module){
+                            self._exec(this, dep, module);
+                        }.bind(this)); 
                     }
 
                 }.bind(this));
